@@ -15,8 +15,6 @@ public:
                         TopologyPath();
                         TopologyPath(int &numberOfComponents);
     virtual             ~TopologyPath();
-
-    void                clear();
     
     bool                visit(int &index);
     bool                visited(int &index);

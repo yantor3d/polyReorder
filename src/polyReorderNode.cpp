@@ -11,8 +11,6 @@
 
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
-#include <maya/MFloatVector.h>
-#include <maya/MFloatVectorArray.h>
 #include <maya/MFnData.h>
 #include <maya/MFnIntArrayData.h>
 #include <maya/MFnMesh.h>
@@ -20,17 +18,12 @@
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MGlobal.h>
 #include <maya/MIntArray.h>
-#include <maya/MItMeshPolygon.h>
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
-#include <maya/MPoint.h>
-#include <maya/MPointArray.h>
 #include <maya/MPxNode.h>
 #include <maya/MString.h>
 #include <maya/MStatus.h>
 #include <maya/MTypeId.h>
-#include <maya/MVector.h>
-#include <maya/MVectorArray.h>
 
 
 #define RETURN_IF_ERROR(s) if (!s) { return s; }

@@ -7,7 +7,6 @@
 #define POLY_REORDER_NODE_H
 
 #include <maya/MDataBlock.h>
-#include <maya/MIntArray.h>
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
 #include <maya/MPxNode.h>

@@ -13,15 +13,12 @@
 #include <maya/MArgDatabase.h>
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
-#include <maya/MFloatPointArray.h>
 #include <maya/MIntArray.h>
 #include <maya/MObject.h>
-#include <maya/MPointArray.h>
 #include <maya/MPxCommand.h>
 #include <maya/MString.h>
 #include <maya/MStatus.h>
 #include <maya/MSyntax.h>
-#include <maya/MVectorArray.h>
 
 #define CONSTUCTION_HISTORY_FLAG            "-ch"
 #define CONSTUCTION_HISTORY_LONG_FLAG       "-constructionHistory"

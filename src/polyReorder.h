@@ -17,6 +17,7 @@
 #include <maya/MObject.h>
 #include <maya/MPointArray.h>
 #include <maya/MStatus.h>
+#include <maya/MVectorArray.h>
 
 namespace polyReorder
 {

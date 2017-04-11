@@ -19,10 +19,7 @@
 #include <maya/MFnIntArrayData.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnMeshData.h>
-#include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MGlobal.h>
-#include <maya/MItMeshEdge.h>
-#include <maya/MItSelectionList.h>
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
 #include <maya/MPlugArray.h>

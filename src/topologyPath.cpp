@@ -5,8 +5,8 @@
 
 #include "topologyPath.h"
 
-#include <vector>
 #include <queue>
+#include <vector>
 
 
 TopologyPath::TopologyPath() {}
@@ -19,17 +19,7 @@ TopologyPath::TopologyPath(int &numberOfComponents)
 }
 
 
-TopologyPath::~TopologyPath()
-{
-    this->clear();
-}
-
-
-void TopologyPath::clear()
-{
-    visitedIndices.clear();
-    indexVisitOrder.clear();
-}
+TopologyPath::~TopologyPath() {}
 
 
 bool TopologyPath::visit(int &index)

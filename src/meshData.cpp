@@ -19,42 +19,23 @@
 MeshData::MeshData() {}
 
 
-MeshData::~MeshData()
-{
-    this->clear();
-}
-
-
-void MeshData::clear()
-{
-    numberOfEdges = 0;
-    numberOfFaces = 0;
-    numberOfVertices = 0;
-
-    vertexData.clear();
-    edgeData.clear();
-    faceData.clear();  
-}
+MeshData::~MeshData() {}
 
 
 void MeshData::unpackMesh(MDagPath &meshDagPath)
-{
-    this->clear();
-    
-    MItMeshEdge edges(meshDagPath);
-    MItMeshPolygon faces(meshDagPath);
-    MItMeshVertex vertices(meshDagPath);
-
-    this->unpackEdges(edges);
-    this->unpackFaces(faces);
-    this->unpackVertices(vertices);
+{    
+    this->unpackEdges(meshDagPath);
+    this->unpackFaces(meshDagPath);
+    this->unpackVertices(meshDagPath);
 
     this->unpackVertexSiblings();
 }
 
 
-void MeshData::unpackEdges(MItMeshEdge &edges)
+void MeshData::unpackEdges(MDagPath &meshDagPath)
 {
+    MItMeshEdge edges(meshDagPath);
+
     this->numberOfEdges = edges.count();
     this->edgeData.resize(this->numberOfEdges);
 
@@ -65,7 +46,7 @@ void MeshData::unpackEdges(MItMeshEdge &edges)
 
     while (!edges.isDone())
     {
-        EdgeData &edge = edgeData[edges.index()];
+        ComponentData &edge = edgeData[edges.index()];
 
         edge.connectedVertices.resize(2);
         edge.connectedVertices[0] = edges.index(0);
@@ -84,8 +65,10 @@ void MeshData::unpackEdges(MItMeshEdge &edges)
 }
 
 
-void MeshData::unpackFaces(MItMeshPolygon &faces)
+void MeshData::unpackFaces(MDagPath &meshDagPath)
 {
+    MItMeshPolygon faces(meshDagPath);
+
     this->numberOfFaces = faces.count();
     this->faceData.resize(this->numberOfFaces);
 
@@ -97,7 +80,7 @@ void MeshData::unpackFaces(MItMeshPolygon &faces)
 
     while (!faces.isDone())
     {
-        FaceData &face = faceData[faces.index()];
+        ComponentData &face = faceData[faces.index()];
 
         faces.getEdges(connectedEdges);
         faces.getConnectedFaces(connectedFaces);
@@ -112,8 +95,10 @@ void MeshData::unpackFaces(MItMeshPolygon &faces)
 }
 
 
-void MeshData::unpackVertices(MItMeshVertex &vertices)
+void MeshData::unpackVertices(MDagPath &meshDagPath)
 {
+    MItMeshVertex vertices(meshDagPath);
+
     this->numberOfVertices = vertices.count();
     this->vertexData.resize(this->numberOfVertices);
 
@@ -125,7 +110,7 @@ void MeshData::unpackVertices(MItMeshVertex &vertices)
 
     while (!vertices.isDone())
     {
-        VertexData &vertex = vertexData[vertices.index()];
+        ComponentData &vertex = vertexData[vertices.index()];
 
         vertices.getConnectedEdges(connectedEdges);
         vertices.getConnectedFaces(connectedFaces);
@@ -146,23 +131,24 @@ void MeshData::unpackVertexSiblings()
     {
         for (int &faceIndex : vertexData[vertexIndex].connectedFaces)
         {
-            vertexData[vertexIndex].faceVertexSiblings.emplace(faceIndex, std::vector<int>());
+            vertexData[vertexIndex].faceSiblings.emplace(faceIndex, std::vector<int>());
 
             for (int &faceVertexIndex : faceData[faceIndex].connectedVertices)
             {
                 if (contains(vertexData[faceVertexIndex].connectedVertices, vertexIndex))
                 {
-                    vertexData[vertexIndex].faceVertexSiblings[faceIndex].push_back(faceVertexIndex);
+                    vertexData[vertexIndex].faceSiblings[faceIndex].push_back(faceVertexIndex);
                 }
             }
 
             sort(
-                vertexData[vertexIndex].faceVertexSiblings[faceIndex].begin(), 
-                vertexData[vertexIndex].faceVertexSiblings[faceIndex].end()
+                vertexData[vertexIndex].faceSiblings[faceIndex].begin(), 
+                vertexData[vertexIndex].faceSiblings[faceIndex].end()
             );
         }
     }
 }
+
 
 void MeshData::insertAll(MIntArray &src, std::vector<int> &dest)
 {
@@ -176,10 +162,12 @@ void MeshData::insertAll(MIntArray &src, std::vector<int> &dest)
     sort(dest.begin(), dest.end());
 }
 
-bool contains(std::vector<int> &items, int &value)
+
+bool contains(std::vector<int> &items, int &item)
 {
-    return find(items.begin(), items.end(), value) != items.end();
+    return binary_search(items.begin(), items.end(), item);
 }
+
 
 std::vector<int> intersection(std::vector<int> &a, std::vector<int> &b)
 {

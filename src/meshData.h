@@ -10,9 +10,7 @@
 #include <unordered_map>
 
 #include <maya/MDagPath.h>
-#include <maya/MItMeshEdge.h>
-#include <maya/MItMeshPolygon.h>
-#include <maya/MItMeshVertex.h>
+#include <maya/MIntArray.h>
 
 
 struct ComponentData
@@ -20,45 +18,37 @@ struct ComponentData
     std::vector<int> connectedVertices;
     std::vector<int> connectedEdges;
     std::vector<int> connectedFaces;
+    std::unordered_map<int, std::vector<int>> faceSiblings;
 };
 
-struct VertexData : ComponentData
-{
-    std::unordered_map<int, std::vector<int>> faceVertexSiblings;
-};
-    
-struct EdgeData : ComponentData {};
-struct FaceData : ComponentData {};
 
 class MeshData
 {
 public:
-    MeshData();
-    virtual ~MeshData();
+                            MeshData();
+    virtual                 ~MeshData();
 
     virtual void            unpackMesh(MDagPath &meshDagPath);
-    virtual void            clear();
 
-private:
+private:    
+    virtual void            unpackEdges(MDagPath &meshDagPath);
+    virtual void            unpackFaces(MDagPath &meshDagPath);
+    virtual void            unpackVertices(MDagPath &meshDagPath);
+    virtual void            unpackVertexSiblings();
     
-    virtual void        unpackEdges(MItMeshEdge &edges);
-    virtual void        unpackFaces(MItMeshPolygon &faces);
-    virtual void        unpackVertices(MItMeshVertex &vertices);
-    virtual void        unpackVertexSiblings();
-    
-    virtual void        insertAll(MIntArray &src, std::vector<int> &dest);
+    virtual void            insertAll(MIntArray &src, std::vector<int> &dest);
 
 public:
-    int                     numberOfVertices = 0;
-    int                     numberOfEdges = 0;
-    int                     numberOfFaces = 0;
+    int                             numberOfVertices = 0;
+    int                             numberOfEdges = 0;
+    int                             numberOfFaces = 0;
     
-    std::vector<VertexData> vertexData;
-    std::vector<EdgeData>   edgeData;
-    std::vector<FaceData>   faceData;
+    std::vector<ComponentData>      vertexData;
+    std::vector<ComponentData>      edgeData;
+    std::vector<ComponentData>      faceData;
 };
 
-std::vector<int> intersection(std::vector<int> &a, std::vector<int> &b);
-bool             contains(std::vector<int> &items, int &value);
+bool                contains(std::vector<int> &items, int &item);
+std::vector<int>    intersection(std::vector<int> &a, std::vector<int> &b);
 
 #endif

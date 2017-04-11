@@ -30,13 +30,7 @@ MeshTopology::MeshTopology(MDagPath &mesh)
 }
 
 
-MeshTopology::~MeshTopology() 
-{
-    meshData.clear();
-    edgePath.clear();
-    facePath.clear();
-    vertexPath.clear();
-}
+MeshTopology::~MeshTopology() {}
 
 
 void MeshTopology::walk(polyReorder::ComponentSelection &startAt)
@@ -160,7 +154,7 @@ int MeshTopology::getNextVertexSibling(int &lastVertex, int &vertex, int &faceIn
 
     auto vertexSiblings = intersection(
         meshData.vertexData[vertex].connectedVertices,
-        meshData.vertexData[vertex].faceVertexSiblings[faceIndex]
+        meshData.vertexData[vertex].faceSiblings[faceIndex]
     );
 
     for (int &v : vertexSiblings)

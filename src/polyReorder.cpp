@@ -98,6 +98,53 @@ MStatus polyReorder::getVertexNormals(MObject &mesh, MIntArray &pointOrder, MVec
 }
 
 
+MStatus polyReorder::getUVs(MObject &mesh, std::vector<UVSetData> &uvSets)
+{
+    MStatus status;
+
+    MFnMesh meshFn(mesh);
+
+    for (UVSetData &uvData : uvSets)
+    {
+        status = meshFn.getUVs(uvData.uArray, uvData.vArray, &(uvData.name));
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+
+        status = meshFn.getAssignedUVs(uvData.uvCounts, uvData.uvIds, &(uvData.name));
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+
+    return MStatus::kSuccess;
+}
+
+
+MStatus polyReorder::setUVs(MObject &mesh, std::vector<UVSetData> &uvSets)
+{
+    MStatus status;
+
+    MFnMesh meshFn(mesh);
+
+    for (UVSetData &uvData : uvSets)
+    {
+        if (uvData.name != "map1")
+        {
+            status = meshFn.createUVSet(uvData.name);
+            CHECK_MSTATUS(status);
+        }
+
+        status = meshFn.clearUVs(&(uvData.name));
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+
+        status = meshFn.setUVs(uvData.uArray, uvData.vArray, &(uvData.name));
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+
+        status = meshFn.assignUVs(uvData.uvCounts, uvData.uvIds, &(uvData.name));
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+    }
+
+    return MStatus::kSuccess;
+}
+
+
 MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntArray &pointOrder, MObject &outMesh, bool isMeshData)
 {
     MStatus status;
@@ -113,10 +160,27 @@ MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntA
     MIntArray polyConnects;
 
     MVectorArray vertexNormals;
+
+    int numUVSets = isMeshData ? srcMeshFn.numUVSets() : tgtMeshFn.numUVSets();
+    MStringArray uvSetNames;
+    std::vector<UVSetData> uvSets(numUVSets);
+
+    if (isMeshData)
+    {
+        srcMeshFn.getUVSetNames(uvSetNames);
+    } else {
+        tgtMeshFn.getUVSetNames(uvSetNames);
+    }
     
+    for (int i = 0; i < numUVSets; i++)
+    {
+        uvSets[i].name = uvSetNames[i];
+    }
+
     polyReorder::getPoints(targetMesh, pointOrder, points, true);
     polyReorder::getPolys(sourceMesh, pointOrder, polyCounts, polyConnects, isMeshData);
     polyReorder::getVertexNormals(targetMesh, pointOrder, vertexNormals);
+    polyReorder::getUVs(isMeshData ? sourceMesh : targetMesh, uvSets);
 
     if (isMeshData)
     {
@@ -154,6 +218,9 @@ MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntA
     }
   
     MFnMesh meshFn(outMesh, &status);
+    CHECK_MSTATUS_AND_RETURN_IT(status);   
+
+    status = polyReorder::setUVs(outMesh, uvSets);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     MIntArray vertices(numVertices);

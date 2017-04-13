@@ -63,7 +63,9 @@ namespace polyReorder
     MStatus getPolys(MObject &mesh, MIntArray &pointOrder, MIntArray &polyCounts, MIntArray &polyConnects, bool reorderPoints);
     MStatus getFaceVertexNormals(MObject &mesh, MIntArray &pointOrder, MVectorArray &vertexNormals);
     MStatus setFaceVertexNormals(MObject &mesh, MIntArray &polyCounts, MIntArray &polyConnects, MVectorArray &vertexNormals);
-                        
+    MStatus getFaceVertexLocks(MObject &mesh, MIntArray &pointOrder, MIntArray &faceList, MIntArray &vertexList, MIntArray &lockedList);
+    MStatus setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MIntArray &vertexList, MIntArray &lockedList);
+
     MStatus getEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t, bool> &edgeSmoothing);
     MStatus setEdgeSmoothing(MObject &mesh, MIntArray &pointOrder, std::unordered_map<uint64_t, bool> &edgeSmoothing);
 

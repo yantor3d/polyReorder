@@ -22,6 +22,12 @@ TopologyPath::TopologyPath(int &numberOfComponents)
 TopologyPath::~TopologyPath() {}
 
 
+bool TopologyPath::isComplete()
+{
+    return numVisited > 0 && numVisited == visitedIndices.size();
+}
+
+
 bool TopologyPath::visit(int &index)
 {
     bool result = false;

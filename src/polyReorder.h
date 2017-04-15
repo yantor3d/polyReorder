@@ -33,8 +33,6 @@ namespace polyReorder
         int faceIndex;
 
         ComponentSelection() {}
-
-        bool isValid() { return vertexIndex >= 0 && edgeIndex >= 0 && faceIndex >= 0; }
     };
 
     struct UVSetData

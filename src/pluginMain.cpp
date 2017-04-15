@@ -5,6 +5,7 @@
 
 #include "polyReorderCommand.h"
 #include "polyReorderNode.h"
+#include "polyReorderTool.h"
 
 #include <maya/MFnPlugin.h>
 #include <maya/MGlobal.h>
@@ -14,7 +15,7 @@
 
 
 const char* kAUTHOR = "Ryan Porter";
-const char* kVERSION = "0.1.0";
+const char* kVERSION = "0.2.0";
 const char* kREQUIRED_API_VERSION = "Any";
 
 
@@ -23,11 +24,20 @@ MTypeId PolyReorderNode::NODE_ID = 0x00126b0e;
 
 MString PolyReorderCommand::COMMAND_NAME = "polyReorder";
 
+MString PolyReorderContextCmd::COMMAND_NAME = "polyReorderCtx";
+
 
 MStatus initializePlugin(MObject obj)
 {
     MStatus status;
     MFnPlugin fnPlugin(obj, kAUTHOR, kVERSION, kREQUIRED_API_VERSION);
+
+    status = fnPlugin.registerContextCommand(
+        PolyReorderContextCmd::COMMAND_NAME,
+        PolyReorderContextCmd::creator
+    );
+
+    CHECK_MSTATUS_AND_RETURN_IT(status);
 
     status = fnPlugin.registerCommand(
         PolyReorderCommand::COMMAND_NAME, 
@@ -53,6 +63,9 @@ MStatus uninitializePlugin(MObject obj)
 {
     MStatus status;
     MFnPlugin fnPlugin(obj, kAUTHOR, kVERSION, kREQUIRED_API_VERSION);
+
+    status = fnPlugin.deregisterContextCommand(PolyReorderContextCmd::COMMAND_NAME);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
 
     status = fnPlugin.deregisterCommand(PolyReorderCommand::COMMAND_NAME);
     CHECK_MSTATUS_AND_RETURN_IT(status);

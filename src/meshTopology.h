@@ -21,6 +21,8 @@ public:
 
     int&        operator[] (int i) { return vertexPath[i]; }
 
+    bool        isComplete();
+
     int         numberOfEdges() { return meshData.numberOfEdges; }
     int         numberOfFaces() { return meshData.numberOfFaces; }
     int         numberOfVertices() { return meshData.numberOfVertices; }

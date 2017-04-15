@@ -224,7 +224,7 @@ MStatus PolyReorderCommand::parseComponentArguments(
 
             if (obj.index('.') == -1)
             {
-                obj = mesh.partialPathName() + '.' + obj;
+                obj = mesh.partialPathName() + "." + obj;
             }
 
             status = selection.add(obj);

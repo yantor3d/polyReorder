@@ -27,7 +27,8 @@ class MeshData
 public:
                             MeshData();
     virtual                 ~MeshData();
-
+    
+    virtual void            clear();
     virtual void            unpackMesh(MDagPath &meshDagPath);
 
 private:    

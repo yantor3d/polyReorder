@@ -22,6 +22,18 @@ MeshData::MeshData() {}
 MeshData::~MeshData() {}
 
 
+void MeshData::clear()
+{
+    numberOfVertices = 0;
+    numberOfEdges = 0;
+    numberOfFaces = 0;
+
+    vertexData.clear();
+    edgeData.clear();
+    faceData.clear();
+}
+
+
 void MeshData::unpackMesh(MDagPath &meshDagPath)
 {    
     this->unpackEdges(meshDagPath);

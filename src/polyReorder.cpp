@@ -49,8 +49,8 @@ MStatus polyReorder::getPoints(MObject &mesh, MIntArray &pointOrder, MPointArray
 
 MStatus polyReorder::getPolys(MObject &mesh, MIntArray &pointOrder, MIntArray &polyCounts, MIntArray &polyConnects, bool reorderPoints)
 {
-    MFnMesh fnMesh(mesh);
-    fnMesh.getVertices(polyCounts, polyConnects);
+    MFnMesh meshFn(mesh);
+    meshFn.getVertices(polyCounts, polyConnects);
 
     uint pci = 0;
 
@@ -81,10 +81,10 @@ MStatus polyReorder::getFaceVertexNormals(MObject &mesh, MIntArray &pointOrder, 
 {
     MStatus status;
 
-    MFnMesh fnMesh(mesh);
-    
+    MFnMesh meshFn(mesh);
+        
     MFloatVectorArray vertexFloatNormals;
-    fnMesh.getNormals(vertexFloatNormals, MSpace::kObject);
+    meshFn.getNormals(vertexFloatNormals, MSpace::kObject);
 
     uint numNormals = vertexFloatNormals.length();
 
@@ -105,6 +105,11 @@ MStatus polyReorder::setFaceVertexNormals(MObject &mesh, MIntArray &polyCounts, 
 
     MFnMesh meshFn(mesh);
     
+    MIntArray normalCounts;
+    MIntArray normalIds;
+    
+    meshFn.getNormalIds(normalCounts, normalIds);
+
     uint numPolys = polyCounts.length();
     uint numNormals = polyConnects.length();
 
@@ -115,14 +120,13 @@ MStatus polyReorder::setFaceVertexNormals(MObject &mesh, MIntArray &polyCounts, 
 
     for (uint i = 0; i < numPolys; i++)
     {
-        for (int j = 0; j < polyCounts[i]; j++)
+        for (int j = 0; j < polyCounts[i]; j++, idx++)
         {
             faceList[idx] = i;
             vertexList[idx] = polyConnects[idx];
-            idx++;
         }
     }
-
+    
     status = meshFn.setFaceVertexNormals(vertexNormals, faceList, vertexList, MSpace::kObject);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
@@ -133,7 +137,7 @@ MStatus polyReorder::getFaceVertexLocks(MObject &mesh, MIntArray &pointOrder, MI
 {
     MStatus status;
 
-    MFnMesh fnMesh(mesh);
+    MFnMesh meshFn(mesh);
 
     MIntArray normalCounts;
     MIntArray normalIds;
@@ -141,14 +145,14 @@ MStatus polyReorder::getFaceVertexLocks(MObject &mesh, MIntArray &pointOrder, MI
     MIntArray polyCounts;
     MIntArray polyConnects;
 
-    status = fnMesh.getVertices(polyCounts, polyConnects);
+    status = meshFn.getNormalIds(normalCounts, normalIds);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
-    status = fnMesh.getNormalIds(normalCounts, normalIds);
+    status = meshFn.getVertices(polyCounts, polyConnects);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
-    uint numPolys = normalCounts.length();
-    uint numNormals = normalIds.length();
+    uint numPolys = polyCounts.length();
+    uint numNormals = polyConnects.length();
 
     faceList.setLength(numNormals);
     vertexList.setLength(numNormals);
@@ -162,7 +166,7 @@ MStatus polyReorder::getFaceVertexLocks(MObject &mesh, MIntArray &pointOrder, MI
         {
             faceList[i] = f;
             vertexList[i] = pointOrder[polyConnects[i]];
-            lockedList[i] = fnMesh.isNormalLocked(normalIds[i]);
+            lockedList[i] = meshFn.isNormalLocked(normalIds[i]);
             i++;
         }
     }
@@ -174,7 +178,7 @@ MStatus polyReorder::setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MInt
 {
     MStatus status;
 
-    MFnMesh fnMesh(mesh);
+    MFnMesh meshFn(mesh);
 
     uint numNormals = faceList.length();
 
@@ -205,7 +209,7 @@ MStatus polyReorder::setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MInt
     {
         unlockedFaceList.setLength(UL);
         unlockedVertList.setLength(UL);
-        status = fnMesh.unlockFaceVertexNormals(unlockedFaceList, unlockedVertList);
+        status = meshFn.unlockFaceVertexNormals(unlockedFaceList, unlockedVertList);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
 
@@ -213,7 +217,7 @@ MStatus polyReorder::setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MInt
     {
         lockedFaceList.setLength(L);
         lockedVertList.setLength(L);
-        status = fnMesh.lockFaceVertexNormals(lockedFaceList, lockedVertList);
+        status = meshFn.lockFaceVertexNormals(lockedFaceList, lockedVertList);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
 
@@ -399,18 +403,21 @@ MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntA
 
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
-  
+
     status = polyReorder::setUVs(outMesh, uvSets);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
+    RETURN_IF_ERROR(status);
 
-    status = polyReorder::setFaceVertexNormals(outMesh, polyCounts, polyConnects, vertexNormals);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
+    if (vertexNormals.length() == polyConnects.length())
+    {
+        status = polyReorder::setFaceVertexNormals(outMesh, polyCounts, polyConnects, vertexNormals);
+        RETURN_IF_ERROR(status);
 
-    status = polyReorder::setFaceVertexLocks(outMesh, faceList, vertexList, lockedList);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
+        status = polyReorder::setFaceVertexLocks(outMesh, faceList, vertexList, lockedList);
+        RETURN_IF_ERROR(status);
+    }
 
     status = polyReorder::setEdgeSmoothing(outMesh, pointOrder, edgeSmoothing);
-    CHECK_MSTATUS_AND_RETURN_IT(status);
+    RETURN_IF_ERROR(status);
 
     return MStatus::kSuccess;
 }

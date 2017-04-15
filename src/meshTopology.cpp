@@ -33,6 +33,12 @@ MeshTopology::MeshTopology(MDagPath &mesh)
 MeshTopology::~MeshTopology() {}
 
 
+bool MeshTopology::isComplete()
+{
+    return vertexPath.isComplete();
+}
+
+
 void MeshTopology::walk(polyReorder::ComponentSelection &startAt)
 {
     walkStartingFace(startAt);

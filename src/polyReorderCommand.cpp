@@ -140,9 +140,17 @@ MStatus PolyReorderCommand::validateArguments()
     MFnMesh sourceMeshFn(sourceMesh);
     MFnMesh destinationMeshFn(destinationMesh);
 
-    bool vertCountMatch = sourceMeshFn.numVertices() == destinationMeshFn.numVertices();
-    bool edgeCountMatch = sourceMeshFn.numEdges() == destinationMeshFn.numEdges();
-    bool polyCountMatch = sourceMeshFn.numPolygons() == destinationMeshFn.numPolygons();
+    int numSourceVertices = (int) sourceMeshFn.numVertices();
+    int numSourceEdges = (int) sourceMeshFn.numEdges();
+    int numSourcePolys = (int) sourceMeshFn.numPolygons();
+
+    int numDestinationVertices = (int) destinationMeshFn.numVertices();
+    int numDestinationEdges = (int) destinationMeshFn.numEdges();
+    int numDestinationPolys = (int) destinationMeshFn.numPolygons();
+
+    bool vertCountMatch = numSourceVertices == numDestinationVertices;
+    bool edgeCountMatch = numSourceEdges == numDestinationEdges;
+    bool polyCountMatch = numSourcePolys == numDestinationPolys;
 
     bool topologyMatches = vertCountMatch && edgeCountMatch && polyCountMatch;
 
@@ -190,6 +198,55 @@ MStatus PolyReorderCommand::validateArguments()
         this->displayError(errorMessage);
         return MStatus::kFailure;
     }
+
+    MeshData sourceMeshData;
+    MeshData destinationMeshData;
+
+    sourceMeshData.unpackMesh(sourceMesh);
+    destinationMeshData.unpackMesh(destinationMesh);
+
+    for (polyReorder::ComponentSelection &cs : sourceComponents)
+    {
+        if (
+            cs.faceIndex >= numSourcePolys
+            || cs.edgeIndex >= numSourceEdges
+            || cs.vertexIndex >= numSourceVertices
+        ) {
+            MGlobal::displayError("Component selection is out of bounds.");
+            return MStatus::kFailure;
+        }
+
+        bool edgeOnFace = contains(sourceMeshData.faceData[cs.faceIndex].connectedEdges, cs.edgeIndex);
+        bool vertexOnEdge = contains(sourceMeshData.edgeData[cs.edgeIndex].connectedVertices, cs.vertexIndex);
+
+        if (!edgeOnFace || !vertexOnEdge)
+        {
+            MGlobal::displayError("Component selection must be an edge on a face, and a vertex on that edge.");
+            return MStatus::kFailure;
+        }
+    }
+
+    for (polyReorder::ComponentSelection &cs : destinationComponents)
+    {
+        if (
+            cs.faceIndex >= numDestinationPolys
+            || cs.edgeIndex >= numDestinationEdges
+            || cs.vertexIndex >= numDestinationVertices
+        ) {
+            MGlobal::displayError("Component selection is out of bounds.");
+            return MStatus::kFailure;
+        }
+
+        bool edgeOnFace = contains(destinationMeshData.faceData[cs.faceIndex].connectedEdges, cs.edgeIndex);
+        bool vertexOnEdge = contains(destinationMeshData.edgeData[cs.edgeIndex].connectedVertices, cs.vertexIndex);
+
+        if (!edgeOnFace || !vertexOnEdge)
+        {
+             MGlobal::displayError("Component selection must be an edge on a face, and a vertex on that edge.");
+            return MStatus::kFailure;
+        }
+    }
+
 
     return status;
 }
@@ -282,6 +339,9 @@ MStatus PolyReorderCommand::redoIt()
     MStatus status;
 
     MIntArray pointOrder = getPointOrder(&status);
+
+    if (pointOrder.length() == 0) { status = MStatus::kFailure; }
+
     RETURN_IF_ERROR(status);
 
     MFnDependencyNode destinationFn(destinationMesh.node());
@@ -370,6 +430,8 @@ MStatus PolyReorderCommand::redoIt()
 
 MIntArray PolyReorderCommand::getPointOrder(MStatus *status)
 {    
+    MIntArray pointOrder;
+
     MeshTopology sourceMeshTopology(this->sourceMesh);
     MeshTopology destinationMeshTopology(this->destinationMesh);
 
@@ -383,24 +445,23 @@ MIntArray PolyReorderCommand::getPointOrder(MStatus *status)
         destinationMeshTopology.walk(cs);
     }
 
-    MIntArray pointOrder(sourceMeshTopology.numberOfVertices(), -1);
-
-    for (uint i = 0; i < pointOrder.length(); i++)
+    if (!sourceMeshTopology.isComplete() || !destinationMeshTopology.isComplete())
     {
-        if (destinationMeshTopology[i] == -1 || sourceMeshTopology[i] == -1)
+        MGlobal::displayError("polyReorder failed - components may not have been selected on all shells. Check your arguments and try again.");
+        status = new MStatus(MStatus::kFailure);
+    } else {
+        pointOrder.setLength(sourceMeshTopology.numberOfVertices());
+
+        for (uint i = 0; i < pointOrder.length(); i++)
         {
-            status = new MStatus(MStatus::kFailure);
-            break;
+            if (destinationMeshTopology[i] == -1 || sourceMeshTopology[i] == -1)
+            {
+                status = new MStatus(MStatus::kFailure);
+                break;
+            }
+
+            pointOrder[destinationMeshTopology[i]] = sourceMeshTopology[i];
         }
-
-        pointOrder[destinationMeshTopology[i]] = sourceMeshTopology[i];
-    }
-
-    if (!status)
-    {
-        MGlobal::displayError(
-            "Not all vertices were remapped. Make sure that your component selects were topologically identical."
-        );
     }
 
     return pointOrder;

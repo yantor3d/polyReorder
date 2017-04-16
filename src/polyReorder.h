@@ -48,13 +48,13 @@ namespace polyReorder
 
     inline uint64_t twoIntKey(int id1, int id2) 
     { 
-        int o1 = id1 < id2;
-        int o2 = id2 < id1;
+        int o1 = id1 <= id2;
+        int o2 = 1 - o1;
 
         uint32_t vtx0 = (id1 * o1) + (id2 * o2);
         uint32_t vtx1 = (id2 * o1) + (id1 * o2);
 
-        return uint64_t(id1) | (uint64_t(id2) << 32); 
+        return uint64_t(vtx0) | (uint64_t(vtx1) << 32); 
     };
 
     MStatus getPoints(MObject &mesh, MIntArray &pointOrder, MPointArray &outPoints, bool reorderPoints);
@@ -64,8 +64,8 @@ namespace polyReorder
     MStatus getFaceVertexLocks(MObject &mesh, MIntArray &pointOrder, MIntArray &faceList, MIntArray &vertexList, MIntArray &lockedList);
     MStatus setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MIntArray &vertexList, MIntArray &lockedList);
 
-    MStatus getEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t, bool> &edgeSmoothing);
-    MStatus setEdgeSmoothing(MObject &mesh, MIntArray &pointOrder, std::unordered_map<uint64_t, bool> &edgeSmoothing);
+    MStatus getEdgeSmoothing(MObject &mesh, MIntArray &pointOrder, std::unordered_map<uint64_t, bool> &edgeSmoothing);
+    MStatus setEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t, bool> &edgeSmoothing);
 
     MStatus getUVs(MObject &mesh, std::vector<UVSetData> &uvSets);
     MStatus setUVs(MObject &mesh, std::vector<UVSetData> &uvSets);

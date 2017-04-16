@@ -83,16 +83,26 @@ MStatus polyReorder::getFaceVertexNormals(MObject &mesh, MIntArray &pointOrder, 
 
     MFnMesh meshFn(mesh);
         
-    MFloatVectorArray vertexFloatNormals;
-    meshFn.getNormals(vertexFloatNormals, MSpace::kObject);
+    MIntArray polyCounts;
+    MIntArray polyConnects;
 
-    uint numNormals = vertexFloatNormals.length();
+    status = meshFn.getVertices(polyCounts, polyConnects);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    uint numNormals = polyConnects.length();
 
     vertexNormals.setLength(numNormals);
+    
+    uint i = 0;
 
-    for (uint i = 0; i < numNormals; i++)
+    for (MItMeshPolygon itPoly(mesh); !itPoly.isDone(); itPoly.next())
     {
-        vertexNormals.set(MVector(vertexFloatNormals[i]), i);
+        uint numVertices = itPoly.polygonVertexCount();
+
+        for (uint v = 0; v < numVertices; v++, i++)
+        {
+            itPoly.getNormal(v, vertexNormals[i], MSpace::kObject);
+        }
     }
 
     return MStatus::kSuccess;
@@ -128,6 +138,9 @@ MStatus polyReorder::setFaceVertexNormals(MObject &mesh, MIntArray &polyCounts, 
     }
     
     status = meshFn.setFaceVertexNormals(vertexNormals, faceList, vertexList, MSpace::kObject);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    status = meshFn.unlockFaceVertexNormals(faceList, vertexList);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     return MStatus::kSuccess;
@@ -180,13 +193,32 @@ MStatus polyReorder::setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MInt
 
     MFnMesh meshFn(mesh);
 
-    uint numNormals = faceList.length();
+    MIntArray polyCounts;
+    MIntArray polyConnects;
+
+    status = meshFn.getVertices(polyCounts, polyConnects);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    uint numPolys = polyCounts.length();
+    uint numNormals = polyConnects.length();
 
     MIntArray lockedFaceList(numNormals);
     MIntArray lockedVertList(numNormals);
 
     MIntArray unlockedFaceList(numNormals);
     MIntArray unlockedVertList(numNormals);
+
+    uint i = 0;
+    
+    for (uint f = 0; f < numPolys; f++)
+    {
+        for (int fv = 0; fv < polyCounts[f]; fv++)
+        {
+            faceList[i] = f;
+            vertexList[i] = polyConnects[i];
+            i++;
+        }
+    }
 
     uint L = 0;
     uint UL = 0;
@@ -225,7 +257,7 @@ MStatus polyReorder::setFaceVertexLocks(MObject &mesh, MIntArray &faceList, MInt
 }
 
 
-MStatus polyReorder::getEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t, bool> &edgeSmoothing)
+MStatus polyReorder::getEdgeSmoothing(MObject &mesh, MIntArray &pointOrder, std::unordered_map<uint64_t, bool> &edgeSmoothing)
 {
     MStatus status;
 
@@ -233,8 +265,8 @@ MStatus polyReorder::getEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t
 
     while (!itEdge.isDone())
     {
-        int v0 = itEdge.index(0);
-        int v1 = itEdge.index(1);
+        int v0 = pointOrder[itEdge.index(0)];
+        int v1 = pointOrder[itEdge.index(1)];
 
         uint64_t edgeKey = polyReorder::twoIntKey(v0, v1);
 
@@ -247,24 +279,16 @@ MStatus polyReorder::getEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t
 }
 
 
-MStatus polyReorder::setEdgeSmoothing(MObject &mesh, MIntArray &pointOrder, std::unordered_map<uint64_t, bool> &edgeSmoothing)
+MStatus polyReorder::setEdgeSmoothing(MObject &mesh, std::unordered_map<uint64_t, bool> &edgeSmoothing)
 {
     MStatus status;
 
     MItMeshEdge itEdge(mesh);
 
-    uint n = pointOrder.length();
-    MIntArray pointReorder(n);
-
-    for (uint i = 0; i < n; i++)
-    {
-        pointReorder[pointOrder[i]] = int(i);
-    }
-
     while (!itEdge.isDone())
     {
-        int v0 = pointReorder[itEdge.index(0)];
-        int v1 = pointReorder[itEdge.index(1)];
+        int v0 = itEdge.index(0);
+        int v1 = itEdge.index(1);
 
         uint64_t edgeKey = polyReorder::twoIntKey(v0, v1);
 
@@ -366,7 +390,7 @@ MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntA
     polyReorder::getPolys(sourceMesh, pointOrder, polyCounts, polyConnects, isMeshData);
     polyReorder::getFaceVertexNormals(targetMesh, pointOrder, vertexNormals);
     polyReorder::getFaceVertexLocks(targetMesh, pointOrder, faceList, vertexList, lockedList);
-    polyReorder::getEdgeSmoothing(targetMesh, edgeSmoothing);
+    polyReorder::getEdgeSmoothing(targetMesh, pointOrder, edgeSmoothing);
     polyReorder::getUVs(isMeshData ? sourceMesh : targetMesh, uvSets);
 
     if (isMeshData)
@@ -407,16 +431,13 @@ MStatus polyReorder::reorderMesh(MObject &sourceMesh, MObject &targetMesh, MIntA
     status = polyReorder::setUVs(outMesh, uvSets);
     RETURN_IF_ERROR(status);
 
-    if (vertexNormals.length() == polyConnects.length())
-    {
-        status = polyReorder::setFaceVertexNormals(outMesh, polyCounts, polyConnects, vertexNormals);
-        RETURN_IF_ERROR(status);
+    status = polyReorder::setFaceVertexNormals(outMesh, polyCounts, polyConnects, vertexNormals);
+    RETURN_IF_ERROR(status);
 
-        status = polyReorder::setFaceVertexLocks(outMesh, faceList, vertexList, lockedList);
-        RETURN_IF_ERROR(status);
-    }
+    status = polyReorder::setFaceVertexLocks(outMesh, faceList, vertexList, lockedList);
+    RETURN_IF_ERROR(status);
 
-    status = polyReorder::setEdgeSmoothing(outMesh, pointOrder, edgeSmoothing);
+    status = polyReorder::setEdgeSmoothing(outMesh, edgeSmoothing);
     RETURN_IF_ERROR(status);
 
     return MStatus::kSuccess;

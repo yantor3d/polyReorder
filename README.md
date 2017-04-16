@@ -6,6 +6,7 @@ See the [Wiki](https://github.com/yantor3d/polyReorder/wiki) for full details.
 
 ## Plugin Contents
 ### Tools
+- polyReorderVtx
 
 ### Commands
 - polyReorder

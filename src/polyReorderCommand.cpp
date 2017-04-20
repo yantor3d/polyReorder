@@ -386,15 +386,14 @@ MStatus PolyReorderCommand::redoIt()
         polyReorder::reorderMesh(sourceMeshObj, destinationMeshObj, pointOrder, destinationMeshObj);
     }
 
-    MDagPath oldMesh(destinationMesh);
-
-    if (oldMesh.node().hasFn(MFn::kMesh))
-    {
-        oldMesh.pop();
-    }
-
     if (undoCreatedMesh.isNull())
     {
+        MDagPath oldMesh(destinationMesh);
+
+        if (oldMesh.node().hasFn(MFn::kMesh))
+        {
+            oldMesh.pop();
+        }
 
         this->appendToResult(oldMesh.partialPathName());
     } else {
@@ -407,12 +406,6 @@ MStatus PolyReorderCommand::redoIt()
             createdMesh.pop();
             undoCreatedMesh = createdMesh.node();
         }
-
-        MDGModifier dgMod;
-        status = dgMod.renameNode(undoCreatedMesh, oldMesh.partialPathName() + "Reorder");
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-        status = dgMod.doIt();
-        CHECK_MSTATUS_AND_RETURN_IT(status);
 
         this->appendToResult(createdMesh.partialPathName());
     }
@@ -532,6 +525,19 @@ MStatus PolyReorderCommand::createNewMesh()
 
     MDagModifier mod;
     MObject newTransform = mod.createNode("transform", MObject::kNullObj, &status);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    status = mod.doIt();
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    MDagPath oldMesh(destinationMesh);
+
+    if (oldMesh.node().hasFn(MFn::kMesh))
+    {
+        oldMesh.pop();
+    }
+
+    status = mod.renameNode(newTransform, oldMesh.partialPathName() + "Reorder");
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     status = mod.doIt();

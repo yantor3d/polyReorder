@@ -27,6 +27,9 @@ MString PolyReorderCommand::COMMAND_NAME = "polyReorder";
 MString PolyReorderContextCmd::COMMAND_NAME = "polyReorderCtx";
 
 
+bool menuCreated = false;
+
+
 MStatus initializePlugin(MObject obj)
 {
     MStatus status;
@@ -55,6 +58,19 @@ MStatus initializePlugin(MObject obj)
 
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
+    if (MGlobal::mayaState() == MGlobal::kInteractive)
+    {
+        status = MGlobal::executePythonCommand("import polyReorder");
+
+        if (status) 
+        {
+            MGlobal::executePythonCommand("polyReorder._initializePlugin()");
+            menuCreated = true;
+        } else {
+            MGlobal::displayWarning("polyReorder module has not been installed - cannot create a tools menu.");
+        }
+    }
+
     return MS::kSuccess;
 }
 
@@ -72,6 +88,17 @@ MStatus uninitializePlugin(MObject obj)
 
     status = fnPlugin.deregisterNode(PolyReorderNode::NODE_ID);
     CHECK_MSTATUS_AND_RETURN_IT(status);
+
+    if (MGlobal::mayaState() == MGlobal::kInteractive && menuCreated)
+    {
+        status = MGlobal::executePythonCommand("import polyReorder");
+
+        if (status) 
+        {
+            MGlobal::executePythonCommand("polyReorder._uninitializePlugin()");
+        }
+    }
+
 
     return MS::kSuccess;
 }

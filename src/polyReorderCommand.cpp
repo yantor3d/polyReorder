@@ -13,7 +13,7 @@
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
 #include <maya/MDGModifier.h>
-#include <maya/MDAGModifier.h>
+#include <maya/MDagModifier.h>
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MFnIntArrayData.h>

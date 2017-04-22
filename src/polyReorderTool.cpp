@@ -12,11 +12,13 @@
 #include <list>
 #include <sstream>
 
+#include <maya/MColorArray.h>
 #include <maya/MDagPath.h>
 #include <maya/MEvent.h>
 #include <maya/MFnMesh.h>
 #include <maya/MGlobal.h>
 #include <maya/MItSelectionList.h>
+#include <maya/MPlug.h>
 #include <maya/MPxContext.h>
 #include <maya/MPxContextCommand.h>
 #include <maya/MPxSelectionContext.h>
@@ -29,6 +31,7 @@
 
 
 PolyReorderTool::PolyReorderTool() {}
+
 PolyReorderTool::~PolyReorderTool() 
 {
     sourceComponents.clear();
@@ -103,7 +106,7 @@ void PolyReorderTool::completeAction()
             if (this->getSelectedComponents())            
             { 
                 MGlobal::clearSelectionList();
-                setState(polyReorder::ToolState::SELECT_OR_COMPLETE); 
+                setState(polyReorder::ToolState::SELECT_OR_COMPLETE);
             }
         break;
 
@@ -122,7 +125,8 @@ void PolyReorderTool::completeAction()
             } else {
                 if (this->getSelectedComponents())
                 {
-                    MGlobal::clearSelectionList();
+                    MGlobal::clearSelectionList();                    
+                    setState(polyReorder::ToolState::SELECT_OR_COMPLETE); 
                 }
             }
         break;
@@ -139,15 +143,25 @@ void PolyReorderTool::deleteAction()
         break;
 
         case polyReorder::ToolState::SELECT_DESTINATION_MESH:
-            this->clearSelectedMesh();
+            this->clearSelectedMesh();            
+            setState(polyReorder::ToolState::SELECT_SOURCE_MESH);
         break;
 
         case polyReorder::ToolState::SELECT_COMPONENTS:
-            this->clearSelectedMesh();
+            this->clearSelectedMesh();            
+            setState(polyReorder::ToolState::SELECT_DESTINATION_MESH);
         break;
 
         case polyReorder::ToolState::SELECT_OR_COMPLETE:
             this->popSelectedComponents();
+
+            if (sourceComponents.empty())
+            {
+                setState(polyReorder::ToolState::SELECT_COMPONENTS);
+            } else {
+                setState(polyReorder::ToolState::SELECT_DESTINATION_MESH);
+            }
+            
         break;
     }
 }
@@ -161,10 +175,8 @@ void PolyReorderTool::abortAction()
 
 bool PolyReorderTool::readyToComplete()
 {
-    bool result = false;
-
-    MeshTopology sourceMeshTopology(sourceMesh);
-    MeshTopology destinationMeshTopology(destinationMesh);
+    sourceMeshTopology.reset();
+    destinationMeshTopology.reset();
 
     for (polyReorder::ComponentSelection &cs : sourceComponents)
     {
@@ -175,13 +187,16 @@ bool PolyReorderTool::readyToComplete()
     {
         destinationMeshTopology.walk(cs);
     }
-    
+
     return sourceMeshTopology.isComplete() && destinationMeshTopology.isComplete();
 }
 
 
 void PolyReorderTool::doToolCommand() 
 {
+    clearDisplayColors(sourceMesh, originalSourceDisplayColors);
+    clearDisplayColors(destinationMesh, originalDestinationDisplayColors);
+
     MGlobal::executeCommand("escapeCurrentTool");
 
     std::stringstream ss;
@@ -221,73 +236,64 @@ MStatus PolyReorderTool::getSelectedMesh()
     MSelectionList activeSelection;
     MGlobal::getActiveSelectionList(activeSelection);
 
-    if (!activeSelection.isEmpty())
+    MDagPath mesh;
+
+    if (activeSelection.isEmpty())
     {
-        MItSelectionList iterSelection(activeSelection);
-        MDagPath object;
+        return MStatus::kFailure;
+    }
 
-        while (!iterSelection.isDone())
+    MItSelectionList iterSelection(activeSelection);
+    MDagPath selectedMesh;
+
+    while (!iterSelection.isDone())
+    {
+        iterSelection.getDagPath(selectedMesh);
+
+        if (selectedMesh.hasFn(MFn::kMesh))
         {
-            iterSelection.getDagPath(object);
-
-            if (object.hasFn(MFn::kMesh))
-            {
-                switch (state)
-                {
-                    case polyReorder::ToolState::SELECT_SOURCE_MESH:                    
-                        this->sourceMesh.set(object);
-                    break;
-                    case polyReorder::ToolState::SELECT_DESTINATION_MESH:
-                        this->destinationMesh.set(object);
-                    break;
-                }
-                break;
-            }
+            mesh.set(selectedMesh);
+            break;
         }
+    }
+
+    if (!mesh.isValid())
+    {
+        return MStatus::kFailure;
     }
 
     switch(state)
     {
-        case polyReorder::ToolState::SELECT_SOURCE_MESH:
-            if (sourceMesh.isValid())
-            {
-                sourceMeshData.unpackMesh(sourceMesh);
+        case polyReorder::ToolState::SELECT_SOURCE_MESH:           
+            sourceMesh.set(mesh);
+            
+            sourceMeshData.unpackMesh(sourceMesh);
+            sourceMeshTopology.setMesh(sourceMesh);
+            getDisplayColors(sourceMesh, originalSourceDisplayColors);
 
-                if (!sourceMesh.node().hasFn(MFn::kTransform)) { sourceMesh.pop(); }
-            } else {
-                status = MStatus::kFailure;
-            }
+            parseArgs::toTransform(sourceMesh);
         break;
 
         case polyReorder::ToolState::SELECT_DESTINATION_MESH:
-            if (destinationMesh.isValid())
+            if (parseArgs::isSameTransform(mesh, sourceMesh))
             {
-                if (!destinationMesh.node().hasFn(MFn::kTransform)) { destinationMesh.pop(); }
+                MGlobal::displayError("Source and destination meshes cannot be the same.");
+                return MStatus::kFailure;
+            } 
 
-                if (sourceMesh == destinationMesh)
-                {
-                    MGlobal::displayError("Source and destination meshes cannot be the same.");
-                    destinationMesh.set(MDagPath());
-                    status = MStatus::kFailure;
-                } else {
-                    MFnMesh sourceMeshFn(sourceMesh);
-                    MFnMesh destinationMeshFn(destinationMesh);
-
-                    if (
-                        sourceMeshFn.numVertices() == destinationMeshFn.numVertices()
-                        && sourceMeshFn.numEdges() ==  destinationMeshFn.numEdges()
-                        && sourceMeshFn.numPolygons() == destinationMeshFn.numPolygons()
-                    ) {
-                        destinationMeshData.unpackMesh(destinationMesh);
-                    } else {
-                        MGlobal::displayError("Source and destination meshes must have the same topology.");
-                        destinationMesh.set(MDagPath());
-                        status = MStatus::kFailure;
-                    }
-                }
-            } else {
-                status = MStatus::kFailure;
+            if (!MeshTopology::hasSameTopology(mesh, sourceMesh))
+            {
+                MGlobal::displayError("Source and destination meshes must have the same topology.");
+                return MStatus::kFailure;
             }
+
+            destinationMesh.set(mesh);
+
+            destinationMeshData.unpackMesh(destinationMesh);
+            destinationMeshTopology.setMesh(destinationMesh);
+            getDisplayColors(destinationMesh, originalDestinationDisplayColors);
+
+            parseArgs::toTransform(destinationMesh);
         break;
     }
 
@@ -302,17 +308,87 @@ MStatus PolyReorderTool::clearSelectedMesh()
     switch(state)
     {
         case polyReorder::ToolState::SELECT_DESTINATION_MESH:
+            clearDisplayColors(sourceMesh, originalSourceDisplayColors);
             sourceMesh.set(MDagPath());
             sourceMeshData.clear();
-            setState(polyReorder::ToolState::SELECT_SOURCE_MESH);
         break;
 
         case polyReorder::ToolState::SELECT_COMPONENTS:
+            clearDisplayColors(destinationMesh, originalDestinationDisplayColors);
             destinationMesh.set(MDagPath());
             destinationMeshData.clear();
-            setState(polyReorder::ToolState::SELECT_DESTINATION_MESH);
         break;
     }
+
+    return MStatus::kSuccess;
+}
+
+
+MStatus PolyReorderTool::getDisplayColors(MDagPath &mesh, bool &value)
+{
+    MStatus status;
+
+    parseArgs::extendToShape(mesh);
+
+    MFnDagNode meshFn(mesh);
+    MPlug displayColorsPlug = meshFn.findPlug("displayColors");
+    value = displayColorsPlug.asBool();
+
+    parseArgs::toTransform(mesh);
+
+    return MStatus::kSuccess;
+}
+
+
+MStatus PolyReorderTool::updateDisplayColors(MDagPath &mesh, MeshTopology &topology)
+{
+    MStatus status;
+
+    if (mesh.isValid())
+    {
+        parseArgs::extendToShape(mesh);
+
+        MIntArray   vertexList(topology.numberOfVertices());
+        MColorArray colors(topology.numberOfVertices());
+
+        for (int i = 0; i < topology.numberOfVertices(); i++)
+        {
+            bool visited = topology.hasVisitedVertex(i);
+
+            float r = visited ? 1.0f : 0.5f;
+            float g = visited ? 1.0f : 0.5f;
+            float b = 0.5f;
+
+            vertexList[i] = i;
+            colors[i] = MColor(r, g, b);
+        }
+
+        MFnMesh meshFn(mesh);
+        MPlug displayColorsPlug = meshFn.findPlug("displayColors");
+        displayColorsPlug.setBool(true);
+        meshFn.setVertexColors(colors, vertexList);
+
+        parseArgs::toTransform(mesh);
+    }
+
+    return MStatus::kSuccess;
+}
+
+
+MStatus PolyReorderTool::clearDisplayColors(MDagPath &mesh, bool &originalValue)
+{
+    MStatus status;
+
+    parseArgs::extendToShape(mesh);
+
+    MFnMesh meshFn(mesh);
+
+    MPlug displayColorsPlug = meshFn.findPlug("displayColors");
+    displayColorsPlug.setBool(originalValue);
+
+    meshFn.clearColors();
+
+    parseArgs::toTransform(mesh);
 
     return MStatus::kSuccess;
 }
@@ -415,19 +491,31 @@ MStatus PolyReorderTool::popSelectedComponents()
     sourceComponents.pop_back();
     destinationComponents.pop_back();
 
-    if (sourceComponents.empty())
-    {
-        setState(polyReorder::ToolState::SELECT_COMPONENTS);
-    }
-
     return MStatus::kSuccess;
 }
 
 
 void PolyReorderTool::setState(polyReorder::ToolState newState)
 {
-    state = newState;
+    this->state = newState;
+
     updateHelpString();
+
+    sourceMeshTopology.reset();
+    destinationMeshTopology.reset();
+
+    for (polyReorder::ComponentSelection &cs : sourceComponents)
+    {
+        sourceMeshTopology.walk(cs);
+    }
+
+    for (polyReorder::ComponentSelection &cs : destinationComponents)
+    {
+        destinationMeshTopology.walk(cs);
+    }
+
+    updateDisplayColors(sourceMesh, sourceMeshTopology);
+    updateDisplayColors(destinationMesh, destinationMeshTopology);
 }
 
 

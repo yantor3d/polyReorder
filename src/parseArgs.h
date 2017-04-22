@@ -26,7 +26,10 @@ namespace parseArgs
     bool isNodeType(MObject &node, MFn::Type nodeType);
     bool isNodeType(MDagPath &path, MFn::Type nodeType);
 
+    bool isSameTransform(MDagPath &a, MDagPath &b);
+    
     void extendToShape(MDagPath &dagPath);
+    void toTransform(MDagPath &dagPath);
 }
 
 #endif

@@ -140,6 +140,18 @@ bool parseArgs::isNodeType(MDagPath &path, MFn::Type nodeType)
 }
 
 
+bool parseArgs::isSameTransform(MDagPath &a, MDagPath &b)
+{
+    MDagPath a_(a);
+    MDagPath b_(b);
+
+    parseArgs::toTransform(a_);
+    parseArgs::toTransform(b_);
+
+    return a_ == b_;
+}
+
+
 void parseArgs::extendToShape(MDagPath &dagPath)
 {
     if (!dagPath.node().hasFn(MFn::kMesh))
@@ -158,5 +170,14 @@ void parseArgs::extendToShape(MDagPath &dagPath)
                 break;
             }
         }        
+    }
+}
+
+
+void parseArgs::toTransform(MDagPath &dagPath)
+{
+    if (!dagPath.node().hasFn(MFn::kTransform))
+    {
+        dagPath.pop();
     }
 }

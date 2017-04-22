@@ -14,12 +14,25 @@ TopologyPath::TopologyPath() {}
 
 TopologyPath::TopologyPath(int &numberOfComponents)
 {
-    indexVisitOrder.resize(numberOfComponents, -1);
-    visitedIndices.resize(numberOfComponents, -1);
+    this->resize(numberOfComponents);
 }
 
 
 TopologyPath::~TopologyPath() {}
+
+
+void TopologyPath::resize(int &numberOfComponents)
+{
+    numVisited = 0;
+    
+    indexVisitOrder.clear();
+    componentShellId.clear();
+    visitedIndices.clear();
+
+    indexVisitOrder.resize(numberOfComponents, -1);
+    componentShellId.resize(numberOfComponents, 0);
+    visitedIndices.resize(numberOfComponents, -1);
+}
 
 
 bool TopologyPath::isComplete()
@@ -28,7 +41,7 @@ bool TopologyPath::isComplete()
 }
 
 
-bool TopologyPath::visit(int &index)
+bool TopologyPath::visit(int &index, int &shellId)
 {
     bool result = false;
 
@@ -37,6 +50,8 @@ bool TopologyPath::visit(int &index)
         visitedIndices[numVisited] = index;
         indexVisitOrder[index] = numVisited++;
         result =  true;
+
+        componentShellId[index] = shellId;
     }    
 
     return result;
@@ -52,6 +67,12 @@ bool TopologyPath::visited(int &index)
 int TopologyPath::visitedAt(int &index)
 {
     return indexVisitOrder[index];
+}
+
+
+int TopologyPath::shellId(int &index)
+{
+    return componentShellId[index];
 }
 
 

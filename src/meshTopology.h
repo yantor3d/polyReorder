@@ -16,21 +16,28 @@
 class MeshTopology
 {
 public:
+                MeshTopology();
                 MeshTopology(MDagPath &mesh);
     virtual    ~MeshTopology();
 
     int&        operator[] (int i) { return vertexPath[i]; }
 
     bool        isComplete();
-
+    bool        hasVisitedVertex(int i);
+    
     int         numberOfEdges() { return meshData.numberOfEdges; }
     int         numberOfFaces() { return meshData.numberOfFaces; }
     int         numberOfVertices() { return meshData.numberOfVertices; }
+
+    void        setMesh(MDagPath &mesh);
+    void        reset();
 
     void        walk(polyReorder::ComponentSelection &startAt);
     void        walkStartingFace(polyReorder::ComponentSelection &startAt);
     void        walkVerticesOnFace(int &faceIndex);
     
+    static bool hasSameTopology(MDagPath &a, MDagPath &b);
+
 private:
     int         getFirstVisited(std::vector<int> &components, TopologyPath &path);
     int         getOppositeVertex(int &edgeIndex, int &vertexIndex);
@@ -40,6 +47,8 @@ private:
 private:
     MDagPath            mesh;
     MeshData            meshData;
+
+    int                 shellId = 0;
 
     TopologyPath        edgePath;
     TopologyPath        facePath;

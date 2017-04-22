@@ -19,23 +19,46 @@
 #include <maya/MString.h>
 
 
+MeshTopology::MeshTopology() {}
+
+
 MeshTopology::MeshTopology(MDagPath &mesh)
 {
-    this->mesh = mesh;
-    meshData.unpackMesh(mesh);
-
-    edgePath = TopologyPath(meshData.numberOfEdges);    
-    facePath = TopologyPath(meshData.numberOfFaces);
-    vertexPath = TopologyPath(meshData.numberOfVertices);
+    this->setMesh(mesh);
 }
 
 
 MeshTopology::~MeshTopology() {}
 
 
+void MeshTopology::setMesh(MDagPath &mesh)
+{
+    this->mesh = mesh;
+    meshData.unpackMesh(mesh);
+
+    this->reset();
+}
+
+
+void MeshTopology::reset()
+{
+    edgePath.resize(meshData.numberOfEdges);    
+    facePath.resize(meshData.numberOfFaces);
+    vertexPath.resize(meshData.numberOfVertices);
+
+    shellId = 0; 
+}
+
+
 bool MeshTopology::isComplete()
 {
     return vertexPath.isComplete();
+}
+
+
+bool MeshTopology::hasVisitedVertex(int i)
+{
+    return vertexPath.visited(i);
 }
 
 
@@ -55,13 +78,15 @@ void MeshTopology::walk(polyReorder::ComponentSelection &startAt)
             }
         }
     }
+
+    shellId++;
 }
 
 
 void MeshTopology::walkStartingFace(polyReorder::ComponentSelection &startAt)
 {
-    vertexPath.visit(startAt.vertexIndex);
-    edgePath.visit(startAt.edgeIndex);
+    vertexPath.visit(startAt.vertexIndex, shellId);
+    edgePath.visit(startAt.edgeIndex, shellId);
 
     walkVerticesOnFace(startAt.faceIndex);
 }
@@ -79,8 +104,8 @@ void MeshTopology::walkVerticesOnFace(int &faceIndex)
 
     while (true)
     {
-        vertexPath.visit(nextVertex);
-        edgePath.visit(nextEdge);
+        vertexPath.visit(nextVertex, shellId);
+        edgePath.visit(nextEdge, shellId);
         edgePath.push(nextEdge);
 
         tmp = nextVertex;
@@ -95,7 +120,7 @@ void MeshTopology::walkVerticesOnFace(int &faceIndex)
         }
     }
 
-    facePath.visit(faceIndex);
+    facePath.visit(faceIndex, shellId);
 }
 
 
@@ -173,4 +198,16 @@ int MeshTopology::getNextVertexSibling(int &lastVertex, int &vertex, int &faceIn
     }
 
     return result;
+}
+
+bool MeshTopology::hasSameTopology(MDagPath &a, MDagPath &b)
+{
+    MFnMesh fA(a);
+    MFnMesh fB(b);
+
+    return (
+           fA.numVertices() == fB.numVertices()
+        && fA.numEdges()    == fB.numEdges()
+        && fA.numPolygons() == fB.numPolygons()
+    );
 }

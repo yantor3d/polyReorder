@@ -16,11 +16,14 @@ public:
                         TopologyPath(int &numberOfComponents);
     virtual             ~TopologyPath();
     
+    void                resize(int &numberOfComponents);
+    
     bool                isComplete();
 
-    bool                visit(int &index);
+    bool                visit(int &index, int &shellId);
     bool                visited(int &index);
     int                 visitedAt(int &index);
+    int                 shellId(int &index);
 
     bool                empty();
     int                 next();
@@ -30,6 +33,7 @@ public:
 
 private:
     std::vector<int>    visitedIndices;
+    std::vector<int>    componentShellId;
     std::vector<int>    indexVisitOrder;
     std::queue<int>     nextToVisit;
 

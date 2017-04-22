@@ -15,7 +15,7 @@
 
 
 const char* kAUTHOR = "Ryan Porter";
-const char* kVERSION = "0.4.0";
+const char* kVERSION = "0.5.0";
 const char* kREQUIRED_API_VERSION = "Any";
 
 
